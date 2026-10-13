@@ -1,0 +1,25 @@
+#:schema https://mise.jdx.dev/schema/mise-task.json
+# devkit · python tasks.
+# CI sets UV_LOCKED=1, so a uv.lock out of date with pyproject.toml fails the
+# job instead of being silently rewritten.
+
+["install:python"]
+description = "Create or refresh the virtualenv from uv.lock"
+run = "uv sync"
+
+["lint:python"]
+description = "ruff check + ruff format --check"
+run = ["ruff check", "ruff format --check"]
+
+["fmt:python"]
+description = "Fix lint findings and format with ruff"
+run = ["ruff check --fix", "ruff format"]
+
+["test:python"]
+description = "Run pytest in the project virtualenv"
+depends = ["install:python"]
+run = "uv run --no-sync pytest"
+
+["build:python"]
+description = "Build sdist and wheel into dist/"
+run = "uv build"

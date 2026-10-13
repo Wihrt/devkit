@@ -1,0 +1,12 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# devkit · helm
+
+[tools]
+helm = "4.3.0"
+helm-docs = "1.14.2"
+kubeconform = "0.8.0"
+
+[env]
+# Override any of these in the project's mise.toml.
+CHARTS_DIR = "charts"
+HELM_DIST_DIR = "dist/charts"

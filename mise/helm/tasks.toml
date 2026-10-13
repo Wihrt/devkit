@@ -1,0 +1,87 @@
+#:schema https://mise.jdx.dev/schema/mise-task.json
+# devkit · helm tasks. Every task loops over $CHARTS_DIR/*/Chart.yaml.
+#
+# Variables (explicit, so local and CI behave the same unless told otherwise):
+#   CHARTS_DIR, HELM_DIST_DIR        set in mise/helm/mise.toml
+#   KUBERNETES_VERSION               kubeconform target, default "master"
+#   HELM_CHART_VERSION               overrides the version when packaging
+#   HELM_REGISTRY                    oci://host/path to push to (publish:helm)
+#   HELM_REGISTRY_USERNAME/PASSWORD  registry login, skipped when unset
+
+["deps:helm"]
+description = "helm dependency build for every chart"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+shopt -s nullglob
+charts=("$CHARTS_DIR"/*/Chart.yaml)
+[ -n "${charts[0]:-}" ] || { echo "no chart found under $CHARTS_DIR/" >&2; exit 1; }
+for chart in "${charts[@]}"; do
+  helm dependency build "$(dirname "$chart")"
+done
+'''
+
+["lint:helm"]
+description = "helm lint --strict every chart"
+depends = ["deps:helm"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+for chart in "$CHARTS_DIR"/*/Chart.yaml; do
+  helm lint --strict "$(dirname "$chart")"
+done
+'''
+
+["test:helm"]
+description = "Render every chart (default values + ci/*-values.yaml) and validate it with kubeconform"
+depends = ["deps:helm"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+shopt -s nullglob
+{% raw %}crds='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'{% endraw %}
+for chart in "$CHARTS_DIR"/*/Chart.yaml; do
+  dir=$(dirname "$chart")
+  for values in "" "$dir"/ci/*-values.yaml; do
+    echo "--- $dir ${values:-(default values)}"
+    helm template ci "$dir" ${values:+--values "$values"} \
+      | kubeconform -strict -summary \
+          -kubernetes-version "${KUBERNETES_VERSION:-master}" \
+          -schema-location default -schema-location "$crds"
+  done
+done
+'''
+
+["docs:helm"]
+description = "Generate each chart README from values.yaml comments (helm-docs)"
+run = "helm-docs --chart-search-root \"$CHARTS_DIR\""
+
+["build:helm"]
+description = "Package every chart into $HELM_DIST_DIR"
+depends = ["deps:helm"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+mkdir -p "$HELM_DIST_DIR"
+for chart in "$CHARTS_DIR"/*/Chart.yaml; do
+  helm package "$(dirname "$chart")" -d "$HELM_DIST_DIR" \
+    ${HELM_CHART_VERSION:+--version "$HELM_CHART_VERSION"}
+done
+'''
+
+["publish:helm"]
+description = "Push the packaged charts to $HELM_REGISTRY (oci://…)"
+depends = ["build:helm"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+: "${HELM_REGISTRY:?set HELM_REGISTRY to oci://<host>/<path>}"
+if [ -n "${HELM_REGISTRY_USERNAME:-}" ] && [ -n "${HELM_REGISTRY_PASSWORD:-}" ]; then
+  host=${HELM_REGISTRY#oci://}; host=${host%%/*}
+  printf '%s' "$HELM_REGISTRY_PASSWORD" \
+    | helm registry login "$host" --username "$HELM_REGISTRY_USERNAME" --password-stdin
+fi
+for pkg in "$HELM_DIST_DIR"/*.tgz; do
+  helm push "$pkg" "$HELM_REGISTRY"
+done
+'''

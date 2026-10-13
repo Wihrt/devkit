@@ -1,0 +1,3 @@
+# Rendered and validated by `mise run test:helm` on top of the default values.
+service:
+  type: NodePort

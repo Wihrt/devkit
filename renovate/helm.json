@@ -1,0 +1,18 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "devkit · helm",
+  "packageRules": [
+    {
+      "description": "A dependency or image bump is a chart change: bump the chart version in the same PR (patch for patches, minor otherwise)",
+      "matchManagers": ["helmv3", "helm-values"],
+      "bumpVersions": [
+        {
+          "name": "Chart version",
+          "filePatterns": ["{{packageFileDir}}/Chart.{yaml,yml}"],
+          "matchStrings": ["(?:^|\\n)version:\\s*[\"']?(?<version>[^\\s\"']+)"],
+          "bumpType": "{{#if isPatch}}patch{{else}}minor{{/if}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#MISE description="Render the Copier template for some stacks, then run lint, test and build in the result"
+#USAGE arg "[stacks]" default="" help="Comma-separated stacks: python,go,helm (empty = base only)"
+#USAGE flag "--ci <ci>" default="gitlab,github" help="Comma-separated CI orchestrators"
+#USAGE flag "--keep" help="Keep the generated project and print its path"
+#
+# The generated project includes devkit by git:: URL, so DEVKIT_REF must be a
+# commit that exists on DEVKIT_REPO (CI passes the commit under test).
+# TEMPLATE_DATA adds Copier answers, space-separated: "python_version=3.13 scaffold=true".
+set -euo pipefail
+
+repo=${DEVKIT_REPO:-https://github.com/Wihrt/devkit.git}
+ref=${DEVKIT_REF:-$(git -C "$MISE_PROJECT_ROOT" rev-parse HEAD)}
+to_json() { local IFS=,; local -a xs; read -ra xs <<<"$1"; local out="" x; for x in "${xs[@]}"; do out+="${out:+,}\"$x\""; done; echo "[$out]"; }
+
+extra=()
+for kv in ${TEMPLATE_DATA:-}; do extra+=(--data "$kv"); done
+
+out=$(mktemp -d)/demo
+copier copy --trust --defaults --quiet --vcs-ref HEAD \
+  --data project_name=demo \
+  --data "stacks=$(to_json "${usage_stacks:-}")" \
+  --data "ci=$(to_json "${usage_ci}")" \
+  --data "devkit_repo=$repo" \
+  --data "devkit_ref=$ref" \
+  "${extra[@]}" \
+  "$MISE_PROJECT_ROOT" "$out"
+
+cd "$out"
+export MISE_TRUSTED_CONFIG_PATHS="$out${MISE_TRUSTED_CONFIG_PATHS:+:$MISE_TRUSTED_CONFIG_PATHS}"
+git init -q -b main
+mise install
+if [[ ",${usage_stacks:-}," == *,python,* ]]; then mise exec -- uv lock --quiet; fi
+# First commit, as a developer would make it: hooks run once and may rewrite
+# generated files (helm-docs writes the chart README).
+git add -A
+mise exec -- prek run --all-files >/dev/null || git add -A
+git -c user.name=devkit -c user.email=devkit@localhost commit -qm "chore: bootstrap from devkit" --no-verify
+
+export UV_LOCKED=1
+for task in lint test build; do   # a base-only project has no test/build
+  if mise tasks info "$task" >/dev/null 2>&1; then mise run "$task"; fi
+done
+git diff --exit-code   # nothing above may leave the tree dirty
+
+if [ "${usage_keep:-false}" = true ]; then echo "$out"; else rm -rf "$(dirname "$out")"; fi

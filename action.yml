@@ -1,0 +1,42 @@
+# devkit — run any mise task from a GitHub workflow.
+#
+#   steps:
+#     - uses: actions/checkout@v7
+#     - uses: Wihrt/devkit@<version>
+#       with:
+#         task: test:e2e
+name: devkit mise run
+description: Install the tools pinned in mise.toml, then run one mise task
+author: Wihrt
+branding:
+  icon: play
+  color: purple
+
+inputs:
+  task:
+    description: mise task to run
+    required: true
+  working-directory:
+    description: Directory holding the project's mise.toml
+    default: "."
+  git-token:
+    description: Token able to read private repositories read by mise git includes
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GIT_TOKEN: ${{ inputs.git-token }}
+      run: '[ -z "$GIT_TOKEN" ] || git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"'
+    - uses: jdx/mise-action@v5
+      with:
+        # renovate: datasource=github-releases depName=jdx/mise
+        version: 2026.10.9
+        working_directory: ${{ inputs.working-directory }}
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TASK: ${{ inputs.task }}
+      run: mise run "$TASK"

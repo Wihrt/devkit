@@ -1,0 +1,5 @@
+module {{ go_module }}
+
+// Language version, kept one minor behind the toolchain devkit pins in mise:
+// golangci-lint refuses to analyse code targeting a newer Go than it was built with.
+go 1.26

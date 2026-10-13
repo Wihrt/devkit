@@ -1,0 +1,27 @@
+# -- Number of pods
+replicaCount: 1
+
+image:
+  # -- Container image repository
+  repository: nginxinc/nginx-unprivileged
+  # -- Image tag, defaults to the chart appVersion
+  tag: "1.29"
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 80
+
+# -- Container port
+containerPort: 8080
+
+# -- Pod resources
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

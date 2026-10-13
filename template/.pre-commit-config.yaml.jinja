@@ -1,0 +1,63 @@
+# Run by prek (https://github.com/j178/prek), installed by mise. Hooks are
+# installed automatically on entering the project (`mise` enter hook), or with
+# `mise run setup:hooks`. Language hooks call the tools mise pins, so the
+# versions match CI exactly.
+repos:
+  - repo: builtin
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+{%- if 'helm' in stacks %}
+        exclude: ^charts/[^/]+/templates/
+{%- endif %}
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged changes)
+        entry: mise exec -- gitleaks git --pre-commit --staged --no-banner --redact
+        language: system
+        pass_filenames: false
+{%- if 'python' in stacks %}
+      - id: ruff-check
+        name: ruff check
+        entry: mise exec -- ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: mise exec -- ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+{%- endif %}
+{%- if 'go' in stacks %}
+      - id: golangci-lint-fmt
+        name: golangci-lint fmt
+        entry: mise exec -- golangci-lint fmt
+        language: system
+        types: [go]
+        pass_filenames: false
+{%- endif %}
+{%- if 'helm' in stacks %}
+      - id: helm-docs
+        name: helm-docs
+        entry: mise run docs:helm
+        language: system
+        files: ^charts/
+        pass_filenames: false
+{%- endif %}
+{%- if 'github' in ci %}
+      - id: actionlint
+        name: actionlint
+        entry: mise exec -- actionlint
+        language: system
+        files: ^\.github/workflows/
+        pass_filenames: false
+{%- endif %}

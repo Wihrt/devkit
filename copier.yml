@@ -1,0 +1,90 @@
+# devkit — Copier template.
+#
+#   copier copy gh:Wihrt/devkit my-project      # new or existing project
+#   copier update                               # follow a new devkit release
+#
+# One template, one answers file: pick the stacks you need (a monorepo can pick
+# several). Every generated file points at the devkit tag it was rendered from,
+# so `copier update` also bumps the mise includes and the CI references.
+
+_min_copier_version: "9.4.0"
+_subdirectory: template
+_answers_file: .copier-answers.yml
+_skip_if_exists:
+  - README.md
+_exclude:
+  - "*.pyc"
+  - "__pycache__"
+
+project_name:
+  type: str
+  help: Project name (lowercase, dashes)
+  validator: >-
+    {% if not (project_name | regex_search('^[a-z][a-z0-9-]*$')) %}lowercase letters, digits and dashes only{% endif %}
+
+stacks:
+  type: str
+  help: Stacks used by this project
+  multiselect: true
+  choices:
+    Python: python
+    Go: go
+    Helm: helm
+
+ci:
+  type: str
+  help: CI orchestrator(s) to generate
+  multiselect: true
+  default: [gitlab]
+  choices:
+    GitLab CI: gitlab
+    GitHub Actions: github
+
+scaffold:
+  type: bool
+  help: Generate a minimal working skeleton (pyproject/src/tests, go.mod/main.go, a chart)? Say no on an existing project.
+  default: true
+
+python_package:
+  type: str
+  help: Python import package name
+  default: "{{ project_name | replace('-', '_') }}"
+  when: "{{ scaffold and 'python' in stacks }}"
+
+python_version:
+  type: str
+  help: Python version (written to .python-version, uv installs it)
+  default: "3.14"
+  when: "{{ 'python' in stacks }}"
+
+go_module:
+  type: str
+  help: Go module path
+  default: "github.com/Wihrt/{{ project_name }}"
+  when: "{{ scaffold and 'go' in stacks }}"
+
+gitlab_component_path:
+  type: str
+  help: GitLab project that hosts the devkit components (components can only be included from the same GitLab instance)
+  default: gitlab.com/wihrt/devkit
+  when: "{{ 'gitlab' in ci }}"
+
+devkit_repo:
+  type: str
+  help: >-
+    Git URL mise includes devkit from. Keep the default unless you use a mirror,
+    e.g. a private copy on your GitLab (CI then authenticates with the job token).
+  default: https://github.com/Wihrt/devkit.git
+
+# --- Not asked: pinned to the devkit release being rendered (`--data
+# --- devkit_ref=<sha>` overrides it; devkit's own CI does).
+
+devkit_ref:
+  type: str
+  default: "{{ _commit }}"
+  when: false
+
+devkit_github:
+  type: str
+  default: Wihrt/devkit
+  when: false

@@ -1,0 +1,26 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">={{ python_version }}"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=9.1"]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "{{ python_package }}"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

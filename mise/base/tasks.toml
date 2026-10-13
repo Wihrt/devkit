@@ -1,0 +1,18 @@
+#:schema https://mise.jdx.dev/schema/mise-task.json
+# devkit · base tasks. Tools come from mise/base/mise.toml (top-level include).
+
+["lint:prek"]
+description = "Run every pre-commit hook (prek) against all files"
+run = "prek run --all-files --show-diff-on-failure"
+
+["lint:secrets"]
+description = "Scan the whole git history for leaked secrets (gitleaks)"
+run = "gitleaks git --no-banner --redact"
+
+["setup:hooks"]
+description = "Install the git hooks (also done by the mise `enter` hook)"
+run = "prek install"
+
+["lint:actions"]
+description = "Lint GitHub Actions workflows (no-op without .github/workflows)"
+run = "[ -d .github/workflows ] && actionlint || echo 'no .github/workflows, skipping'"

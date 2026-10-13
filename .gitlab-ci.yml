@@ -1,0 +1,19 @@
+# Runs on the GitLab mirror only (see .github/workflows/mirror-gitlab.yml).
+#  - every pipeline: the components lint devkit itself, from the commit being
+#    tested, so a broken component never reaches the catalog;
+#  - tag pipelines: create the release that publishes the tag in the CI/CD Catalog.
+stages: [lint, release]
+
+include:
+  - component: $CI_SERVER_FQDN/$CI_PROJECT_PATH/base@$CI_COMMIT_SHA
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/
+  script:
+    - echo "Publishing $CI_COMMIT_TAG to the CI/CD Catalog"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: See https://github.com/Wihrt/devkit/releases/tag/$CI_COMMIT_TAG

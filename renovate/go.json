@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "devkit · go",
+  "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
+  "packageRules": [
+    {
+      "description": "The `go` directive follows the toolchain devkit pins in mise, not the other way round",
+      "matchDatasources": ["golang-version"],
+      "matchDepNames": ["go"],
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# devkit · go
+
+[tools]
+go = "1.27.2"
+golangci-lint = "2.14.0"

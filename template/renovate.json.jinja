@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>{{ devkit_github }}//renovate/default"
+{%- for s in stacks %},
+    "github>{{ devkit_github }}//renovate/{{ s }}"
+{%- endfor %}
+  ]
+}

@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # devkit lints itself with its own reusable workflow, from the working tree.
+  base:
+    uses: ./.github/workflows/base.yml
+
+  # Render the Copier template per stack and run lint/test/build in the result,
+  # against the bricks of the commit under test.
+  template:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stacks: ["", python, go, helm, "python,go,helm"]
+    env:
+      DEVKIT_REPO: https://github.com/${{ github.repository }}.git
+      DEVKIT_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+      - run: mise run test:template "${{ matrix.stacks }}"

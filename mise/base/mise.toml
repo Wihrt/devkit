@@ -1,0 +1,17 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# devkit · base — tools every project gets, whatever its stack.
+#
+# Consumed through mise's top-level `include` (git:: + ?ref=<devkit tag>).
+# An include may only carry tools, env, vars, hooks… — no tasks: those live in
+# tasks.toml next to this file and go through `task_config.includes`.
+# The project's own mise.toml always wins over what is declared here.
+
+[tools]
+actionlint = "1.7.12"
+gitleaks = "8.30.1"
+prek = "0.5.5"
+
+[hooks]
+# Pre-commit hooks install themselves the first time you enter the project
+# with an activated mise shell. Idempotent, so it costs nothing afterwards.
+enter = "prek install --quiet"

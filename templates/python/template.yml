@@ -1,0 +1,86 @@
+# devkit · python — ruff, pytest and uv build through mise.
+spec:
+  description: Lint, test and build a uv-managed Python project
+  inputs:
+    job_prefix:
+      default: python
+      description: Prefix of every job name. Change it when the component is included twice (monorepo), otherwise jobs silently overwrite each other.
+    root_dir:
+      default: "."
+      description: Directory holding the project's mise.toml, relative to the repository root.
+    git_auth:
+      default: job_token
+      options: [job_token, none]
+      description: >-
+        How mise authenticates git:: includes hosted on this GitLab instance.
+        job_token: CI_JOB_TOKEN, or DEVKIT_GIT_TOKEN (read_repository) when that
+        variable is set — the included project must list this project or its
+        group under Settings > CI/CD > Job token permissions. none: anonymous
+        (public repositories; a job token outside the allowlist is rejected even
+        for public projects).
+    image:
+      # renovate: datasource=docker depName=jdxcode/mise
+      default: jdxcode/mise:2026.10.9-debian
+      description: Image providing mise, git and curl. Tools themselves come from mise.toml.
+    stage_lint:
+      default: lint
+    stage_test:
+      default: test
+    stage_build:
+      default: build
+---
+".$[[ inputs.job_prefix ]]:mise":
+  image: $[[ inputs.image ]]
+  variables:
+    # Everything mise downloads lives under .mise/, which is cached between jobs.
+    MISE_DATA_DIR: $CI_PROJECT_DIR/.mise/data
+    MISE_CACHE_DIR: $CI_PROJECT_DIR/.mise/cache
+    MISE_TRUSTED_CONFIG_PATHS: $CI_PROJECT_DIR
+    MISE_YES: "1"
+    # Provide GITHUB_TOKEN as a masked CI/CD variable to avoid GitHub API rate limits.
+  cache:
+    key:
+      prefix: mise
+      files:
+        - $[[ inputs.root_dir ]]/mise.toml
+        - $[[ inputs.root_dir ]]/mise.lock
+    paths:
+      - .mise/
+  before_script:
+    # mise clones its git:: includes itself: give it an identity for this
+    # instance (private devkit mirror, private task repos). See git_auth.
+    - |
+      if [ "$[[ inputs.git_auth ]]" = job_token ]; then
+        git config --global url."https://${DEVKIT_GIT_USER:-gitlab-ci-token}:${DEVKIT_GIT_TOKEN:-$CI_JOB_TOKEN}@${CI_SERVER_FQDN}/".insteadOf "https://${CI_SERVER_FQDN}/"
+      fi
+    - cd "$[[ inputs.root_dir ]]"
+    - mise install
+
+"$[[ inputs.job_prefix ]]:lint":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_lint ]]
+  script:
+    - mise run lint:python
+
+"$[[ inputs.job_prefix ]]:test":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_test ]]
+  variables:
+    UV_LOCKED: "1"
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.mise/uv
+    UV_PYTHON_INSTALL_DIR: $CI_PROJECT_DIR/.mise/uv-python
+  script:
+    - mise run test:python
+
+"$[[ inputs.job_prefix ]]:build":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_build ]]
+  variables:
+    UV_LOCKED: "1"
+    UV_CACHE_DIR: $CI_PROJECT_DIR/.mise/uv
+    UV_PYTHON_INSTALL_DIR: $CI_PROJECT_DIR/.mise/uv-python
+  script:
+    - mise run build:python
+  artifacts:
+    paths:
+      - $[[ inputs.root_dir ]]/dist/

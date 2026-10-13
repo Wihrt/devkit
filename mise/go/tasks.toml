@@ -1,0 +1,20 @@
+#:schema https://mise.jdx.dev/schema/mise-task.json
+# devkit · go tasks.
+# GO_TEST_FLAGS: extra `go test` flags, empty by default. `-race` needs cgo and
+# a C compiler, which the default CI image does not ship — set it where you have one.
+
+["lint:go"]
+description = "golangci-lint run"
+run = "golangci-lint run"
+
+["fmt:go"]
+description = "Format with the formatters configured in .golangci.yml"
+run = "golangci-lint fmt"
+
+["test:go"]
+description = "go test ./..."
+run = "go test ${GO_TEST_FLAGS:-} ./..."
+
+["build:go"]
+description = "Build every main package into dist/"
+run = "go build -o dist/ ./..."

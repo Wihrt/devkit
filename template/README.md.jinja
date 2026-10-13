@@ -1,0 +1,26 @@
+# {{ project_name }}
+
+Bootstrapped with [devkit]({{ devkit_repo | replace('.git', '') }}) {{ devkit_ref }} ({{ stacks | join(', ') or 'base' }}).
+
+## Getting started
+
+```sh
+mise trust && mise install   # tools pinned by devkit
+mise run                     # pick a task
+```
+
+| Command | What it does |
+|---|---|
+| `mise run lint` | every `lint:*` task (prek hooks, secrets{% for s in stacks %}, {{ s }}{% endfor %}) |
+{%- if 'python' in stacks or 'go' in stacks %}
+| `mise run fmt` | every formatter |
+{%- endif %}
+{%- if stacks %}
+| `mise run test` | every `test:*` task |
+| `mise run build` | every `build:*` task |
+{%- endif %}
+
+CI runs the very same tasks{% if ci %} ({{ ci | join(' and ') }}){% endif %}. Git hooks are installed by
+mise when you enter the directory (`mise run setup:hooks` otherwise).
+
+Update the tooling with `copier update`.

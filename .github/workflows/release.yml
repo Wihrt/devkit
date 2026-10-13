@@ -1,0 +1,42 @@
+# Conventional commits on main → release PR → tag X.Y.Z (no "v": the GitLab
+# CI/CD Catalog only accepts plain semver tags).
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # A tag pushed with GITHUB_TOKEN triggers no workflow, so mirror-gitlab.yml
+  # never sees release tags: push them from here.
+  mirror-tag:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true' && vars.GITLAB_MIRROR != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - env:
+          GITLAB_MIRROR: ${{ vars.GITLAB_MIRROR }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: git push "https://oauth2:${GITLAB_TOKEN}@${GITLAB_MIRROR}" "refs/tags/${TAG}"

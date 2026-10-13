@@ -1,0 +1,28 @@
+repos:
+  - repo: builtin
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        # Copier files are Jinja, not YAML, until rendered
+        exclude: ^template/
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged changes)
+        entry: mise exec -- gitleaks git --pre-commit --staged --no-banner --redact
+        language: system
+        pass_filenames: false
+      - id: actionlint
+        name: actionlint
+        entry: mise exec -- actionlint
+        language: system
+        files: ^\.github/workflows/
+        pass_filenames: false

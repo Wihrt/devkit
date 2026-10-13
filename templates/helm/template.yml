@@ -1,0 +1,98 @@
+# devkit · helm — lint, kubeconform validation, packaging and OCI publishing.
+spec:
+  description: Lint, validate, package and publish the Helm charts under $CHARTS_DIR
+  inputs:
+    job_prefix:
+      default: helm
+      description: Prefix of every job name. Change it when the component is included twice (monorepo), otherwise jobs silently overwrite each other.
+    root_dir:
+      default: "."
+      description: Directory holding the project's mise.toml, relative to the repository root.
+    git_auth:
+      default: job_token
+      options: [job_token, none]
+      description: >-
+        How mise authenticates git:: includes hosted on this GitLab instance.
+        job_token: CI_JOB_TOKEN, or DEVKIT_GIT_TOKEN (read_repository) when that
+        variable is set — the included project must list this project or its
+        group under Settings > CI/CD > Job token permissions. none: anonymous
+        (public repositories; a job token outside the allowlist is rejected even
+        for public projects).
+    image:
+      # renovate: datasource=docker depName=jdxcode/mise
+      default: jdxcode/mise:2026.10.9-debian
+      description: Image providing mise, git and curl. Tools themselves come from mise.toml.
+    stage_lint:
+      default: lint
+    stage_test:
+      default: test
+    stage_build:
+      default: build
+    stage_publish:
+      default: publish
+    registry:
+      default: oci://$CI_REGISTRY_IMAGE/charts
+      description: OCI registry the charts are pushed to (GitLab's own registry by default)
+    publish_if:
+      default: $CI_COMMIT_TAG
+      description: rules:if expression for the publish job. Any unset variable (e.g. $NEVER) disables publishing.
+---
+".$[[ inputs.job_prefix ]]:mise":
+  image: $[[ inputs.image ]]
+  variables:
+    # Everything mise downloads lives under .mise/, which is cached between jobs.
+    MISE_DATA_DIR: $CI_PROJECT_DIR/.mise/data
+    MISE_CACHE_DIR: $CI_PROJECT_DIR/.mise/cache
+    MISE_TRUSTED_CONFIG_PATHS: $CI_PROJECT_DIR
+    MISE_YES: "1"
+    # Provide GITHUB_TOKEN as a masked CI/CD variable to avoid GitHub API rate limits.
+  cache:
+    key:
+      prefix: mise
+      files:
+        - $[[ inputs.root_dir ]]/mise.toml
+        - $[[ inputs.root_dir ]]/mise.lock
+    paths:
+      - .mise/
+  before_script:
+    # mise clones its git:: includes itself: give it an identity for this
+    # instance (private devkit mirror, private task repos). See git_auth.
+    - |
+      if [ "$[[ inputs.git_auth ]]" = job_token ]; then
+        git config --global url."https://${DEVKIT_GIT_USER:-gitlab-ci-token}:${DEVKIT_GIT_TOKEN:-$CI_JOB_TOKEN}@${CI_SERVER_FQDN}/".insteadOf "https://${CI_SERVER_FQDN}/"
+      fi
+    - cd "$[[ inputs.root_dir ]]"
+    - mise install
+
+"$[[ inputs.job_prefix ]]:lint":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_lint ]]
+  script:
+    - mise run lint:helm
+
+"$[[ inputs.job_prefix ]]:test":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_test ]]
+  script:
+    - mise run test:helm
+
+"$[[ inputs.job_prefix ]]:build":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_build ]]
+  script:
+    - mise run build:helm
+  artifacts:
+    paths:
+      - $[[ inputs.root_dir ]]/dist/charts/
+
+"$[[ inputs.job_prefix ]]:publish":
+  extends: ".$[[ inputs.job_prefix ]]:mise"
+  stage: $[[ inputs.stage_publish ]]
+  variables:
+    HELM_REGISTRY: $[[ inputs.registry ]]
+    HELM_REGISTRY_USERNAME: $CI_REGISTRY_USER
+    HELM_REGISTRY_PASSWORD: $CI_REGISTRY_PASSWORD
+  script:
+    - mise run publish:helm
+  rules:
+    - if: $[[ inputs.publish_if ]]

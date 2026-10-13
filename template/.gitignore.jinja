@@ -1,0 +1,17 @@
+# mise
+mise.local.toml
+.mise/
+# build output
+dist/
+{%- if 'python' in stacks %}
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+{%- endif %}
+{%- if 'helm' in stacks %}
+# helm
+charts/*/charts/*.tgz
+{%- endif %}

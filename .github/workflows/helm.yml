@@ -1,0 +1,121 @@
+# devkit · helm — reusable workflow. GitHub only orchestrates; every job runs
+# `mise run <task>`, exactly what you run locally.
+#
+#   jobs:
+#     helm:
+#       uses: Wihrt/devkit/.github/workflows/helm.yml@<version>
+name: devkit-helm
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory holding the project's mise.toml
+        type: string
+        default: "."
+      publish:
+        description: Push the packaged charts to the registry
+        type: boolean
+        default: false
+      registry:
+        description: OCI registry (oci://host/path). Defaults to oci://ghcr.io/<owner>/charts
+        type: string
+        default: ""
+    secrets:
+      git-token:
+        description: Token able to read private repositories read by mise git includes (devkit fork, private task repos)
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      # mise clones its git:: includes itself; github.token only reads this repository.
+      - name: Credentials for private mise git includes
+        env:
+          GIT_TOKEN: ${{ secrets.git-token }}
+        run: '[ -z "$GIT_TOKEN" ] || git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"'
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+          working_directory: ${{ inputs.working-directory }}
+      - run: mise run lint:helm
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      # mise clones its git:: includes itself; github.token only reads this repository.
+      - name: Credentials for private mise git includes
+        env:
+          GIT_TOKEN: ${{ secrets.git-token }}
+        run: '[ -z "$GIT_TOKEN" ] || git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"'
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+          working_directory: ${{ inputs.working-directory }}
+      - run: mise run test:helm
+
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      # mise clones its git:: includes itself; github.token only reads this repository.
+      - name: Credentials for private mise git includes
+        env:
+          GIT_TOKEN: ${{ secrets.git-token }}
+        run: '[ -z "$GIT_TOKEN" ] || git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"'
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+          working_directory: ${{ inputs.working-directory }}
+      - run: mise run build:helm
+      - uses: actions/upload-artifact@v7
+        with:
+          name: helm-charts
+          path: ${{ inputs.working-directory }}/dist/charts/
+
+  publish:
+    if: inputs.publish
+    needs: [lint, test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    env:
+      HELM_REGISTRY: ${{ inputs.registry }}
+      HELM_REGISTRY_USERNAME: ${{ github.actor }}
+      HELM_REGISTRY_PASSWORD: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      # mise clones its git:: includes itself; github.token only reads this repository.
+      - name: Credentials for private mise git includes
+        env:
+          GIT_TOKEN: ${{ secrets.git-token }}
+        run: '[ -z "$GIT_TOKEN" ] || git config --global url."https://x-access-token:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/"'
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+          working_directory: ${{ inputs.working-directory }}
+      # Default to GHCR; OCI references must be lowercase.
+      - run: HELM_REGISTRY="${HELM_REGISTRY:-oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts}" mise run publish:helm

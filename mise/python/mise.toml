@@ -1,0 +1,7 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# devkit · python — uv manages the interpreter (.python-version / requires-python)
+# and the virtualenv; mise only brings uv itself and ruff.
+
+[tools]
+ruff = "0.17.0"
+uv = "0.13.0"

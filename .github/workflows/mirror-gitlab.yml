@@ -1,0 +1,27 @@
+# Push main and tags to the GitLab project that publishes the components in the
+# CI/CD Catalog. Inactive until the repository variable GITLAB_MIRROR (e.g.
+# gitlab.com/wihrt/devkit.git) and the secret GITLAB_TOKEN (project access token,
+# role Maintainer, scope write_repository) are set.
+name: mirror-gitlab
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    if: vars.GITLAB_MIRROR != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Push ${{ github.ref }}
+        env:
+          GITLAB_MIRROR: ${{ vars.GITLAB_MIRROR }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: git push --force "https://oauth2:${GITLAB_TOKEN}@${GITLAB_MIRROR}" "${GITHUB_SHA}:${GITHUB_REF}"
