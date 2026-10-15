@@ -5,7 +5,7 @@ image:
   # -- Container image repository
   repository: nginxinc/nginx-unprivileged
   # -- Image tag, defaults to the chart appVersion
-  tag: "1.29"
+  tag: "1.31"
   # -- Image pull policy
   pullPolicy: IfNotPresent
 
