@@ -37,7 +37,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.10
           working_directory: ${{ inputs.working-directory }}
       - run: mise run lint:prek
 
@@ -58,7 +58,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.10
           working_directory: ${{ inputs.working-directory }}
       - run: mise run lint:secrets
 
@@ -77,6 +77,6 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.10
           working_directory: ${{ inputs.working-directory }}
       - run: mise run lint:actions

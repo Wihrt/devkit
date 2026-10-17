@@ -35,5 +35,5 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.10
       - run: mise run test:template "${{ matrix.stacks }}"
