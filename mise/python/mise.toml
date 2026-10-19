@@ -3,5 +3,5 @@
 # and the virtualenv; mise only brings uv itself and ruff.
 
 [tools]
-ruff = "0.17.0"
+ruff = "0.17.1"
 uv = "0.13.0"
