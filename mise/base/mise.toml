@@ -9,7 +9,7 @@
 [tools]
 actionlint = "1.7.12"
 gitleaks = "8.30.1"
-prek = "0.5.5"
+prek = "0.5.7"
 
 [hooks]
 # Pre-commit hooks install themselves the first time you enter the project
