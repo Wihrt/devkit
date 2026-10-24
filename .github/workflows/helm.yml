@@ -45,7 +45,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.17
           working_directory: ${{ inputs.working-directory }}
       - run: mise run lint:helm
 
@@ -64,7 +64,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.17
           working_directory: ${{ inputs.working-directory }}
       - run: mise run test:helm
 
@@ -83,7 +83,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.17
           working_directory: ${{ inputs.working-directory }}
       - run: mise run build:helm
       - uses: actions/upload-artifact@v7
@@ -115,7 +115,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.17
           working_directory: ${{ inputs.working-directory }}
       # Default to GHCR; OCI references must be lowercase.
       - run: HELM_REGISTRY="${HELM_REGISTRY:-oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts}" mise run publish:helm
