@@ -25,7 +25,7 @@ spec:
         for public projects).
     image:
       # renovate: datasource=docker depName=jdxcode/mise
-      default: jdxcode/mise:2026.10.9-debian
+      default: jdxcode/mise:2026.10.19
       description: Image providing mise, git and curl. Tools themselves come from mise.toml.
     task:
       description: mise task to run (`mise run <task>`)
