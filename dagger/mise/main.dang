@@ -1,0 +1,230 @@
+"""
+Run a project's mise tasks as Dagger checks.
+
+mise owns the tooling: every tool and its version come from mise.toml, the
+same file developers, prek and the GitLab/GitHub wrappers already use.
+Dagger owns the execution: each task runs in its own container, in parallel,
+cached by its inputs, identically on a laptop and in CI.
+
+  dagger check                           every lint:* / test:* task
+  dagger check --mise-task=lint:python   one task
+  dagger generate                        fmt:* tasks, as a changeset to review
+"""
+type Mise {
+  let source: Directory!
+  let config: Directory!
+  let history: Directory
+  let image: String!
+  let workdir: String!
+  let checkPrefixes: [String!]!
+  let fmtPrefixes: [String!]!
+  let variables: [String!]!
+  let githubToken: Secret
+
+  new(
+    ws: Workspace!,
+    """
+    Image providing mise, git and curl, as in the GitLab components. Empty
+    means the version devkit pins. Tools come from mise.toml, not the image.
+    """
+    image: String! = "",
+    """
+    Directory holding the project's mise.toml, relative to the workspace root.
+    """
+    dir: String! = ".",
+    """
+    Tasks whose name starts with one of these prefixes become checks.
+    """
+    checkPrefixes: [String!]! = ["lint:", "test:"],
+    """
+    Tasks whose name starts with one of these prefixes make the fmt generator.
+    """
+    fmtPrefixes: [String!]! = ["fmt:"],
+    """
+    KEY=VALUE pairs set for every task, e.g. UV_LOCKED=1. Dagger runs the
+    same way everywhere, so the strict CI variables can be the default.
+    """
+    variables: [String!]! = [],
+    """
+    Paths left out of the source: local state that only churns the cache.
+    """
+    exclude: [String!]! = [".mise", ".venv", "dist", "node_modules", "**/__pycache__", "mise.local.toml"],
+    """
+    Mount the git history at .git (gitleaks, prek and some tasks need it).
+    It ties every check to the current commit: turn it off when no task
+    reads git, and unchanged files hit the cache across commits.
+    """
+    git: Boolean! = true,
+    """
+    Token mise uses for GitHub API calls while installing tools (rate limits).
+    """
+    githubToken: Secret,
+  ) {
+    self.source = ws.directory("/", exclude: exclude + [".git"])
+    # Only what decides the toolchain: editing code never reinstalls tools.
+    self.config = ws.directory(
+      "/",
+      include: ["**/mise.toml", "**/.mise.toml", "**/mise.*.toml", "**/mise.lock", "**/.tool-versions", "**/.config/mise/**"],
+      exclude: exclude + [".git"],
+    )
+    self.history = if (git) { ws.git.directory } else { null }
+    self.image = image
+    self.workdir = "/src/" + dir
+    self.checkPrefixes = checkPrefixes
+    self.fmtPrefixes = fmtPrefixes
+    self.variables = variables
+    self.githubToken = githubToken
+    self
+  }
+
+  """
+  The project's lint/test mise tasks, keyed by task name. Each one is a check.
+  """
+  pub tasks: Tasks! {
+    Tasks(names: discover(checkPrefixes), runner: runner, command: ["env"] + variables + ["mise", "run"])
+  }
+
+  """
+  Run the fmt:* tasks and return what they changed, for review.
+  `dagger check` also reports it as stale when formatting is off.
+  """
+  pub fmt: Changeset! @generate {
+    runner
+      .withExec(
+        ["env"] + variables + ["sh", "-c", """for task in "$@"; do mise run "$task"; done""", "sh"] + discover(fmtPrefixes),
+      )
+      .directory("/src")
+      .withoutDirectory(".git")
+      .changes(source)
+  }
+
+  """
+  Run any mise task and return its container, to chain stdout, directory,
+  terminal… e.g. `dagger api call mise run --task=lint terminal`.
+  """
+  pub run(task: String!): Container! {
+    runner.withExec(["env"] + variables + ["mise", "run", task])
+  }
+
+  """
+  Run a build task and return the directory it writes, e.g.
+  `dagger api call mise build --output=./dist`.
+  """
+  pub build(task: String! = "build", output: String! = "dist"): Directory! {
+    run(task).directory(workdir + "/" + output)
+  }
+
+  """
+  The toolchain with the project mounted: `dagger api call mise shell terminal`.
+  """
+  pub shell: Container! {
+    runner.withDefaultTerminalCmd(["bash"])
+  }
+
+  """
+  mise and the tools of mise.toml, installed from the config files alone:
+  Dagger caches this layer until a mise file changes.
+  """
+  let toolchain: Container! {
+    let ref = if (image == "") {
+      # renovate: datasource=docker depName=jdxcode/mise
+      "jdxcode/mise:2026.10.9-debian"
+    } else {
+      image
+    }
+    let base = container
+      .from(ref)
+      .withEnvVariable("MISE_YES", "1")
+      .withEnvVariable("MISE_TRUSTED_CONFIG_PATHS", "/src")
+      # The host drives Dagger; the containers never need the CLI.
+      .withEnvVariable("MISE_DISABLE_TOOLS", "dagger")
+      # One cache volume for every package manager: downloads survive runs
+      # without being part of any layer.
+      .withMountedCache("/cache", cacheVolume("devkit-mise"))
+      .withEnvVariable("XDG_CACHE_HOME", "/cache")
+      .withEnvVariable("GOMODCACHE", "/cache/go-mod")
+      .withEnvVariable("UV_PYTHON_INSTALL_DIR", "/cache/uv-python")
+      # Kept out of the source tree, so the fmt changeset stays clean.
+      .withEnvVariable("RUFF_CACHE_DIR", "/cache/ruff")
+      .withExec(["git", "config", "--global", "--add", "safe.directory", "*"])
+    let authed = if (githubToken == null) {
+      base
+    } else {
+      base.withSecretVariable("GITHUB_TOKEN", githubToken)
+    }
+    authed
+      .withMountedDirectory("/src", config)
+      .withWorkdir(workdir)
+      .withExec(["mise", "install"])
+  }
+
+  """
+  The toolchain with the whole project mounted at /src.
+  """
+  let runner: Container! {
+    let ctr = toolchain.withMountedDirectory("/src", source)
+    if (history == null) {
+      ctr
+    } else {
+      ctr.withMountedDirectory("/src/.git", history)
+    }
+  }
+
+  """
+  Names of the mise tasks starting with one of the prefixes.
+  """
+  let discover(prefixes: [String!]!): [String!]! {
+    runner
+      .withExec(["sh", "-c", """
+        mise tasks ls --no-header | awk '{print $1}' | while read -r task; do
+          for prefix in "$@"; do
+            case "$task" in "$prefix"*) echo "$task"; break ;; esac
+          done
+        done
+        """, "sh"] + prefixes)
+      .stdout
+      .split("\n")
+      .filter { name => name != "" }
+  }
+}
+
+"""
+mise tasks, keyed by name.
+"""
+type Tasks @collection {
+  """
+  Task names, as `mise tasks ls` prints them.
+  """
+  pub names: [String!]! @keys
+
+  let runner: Container!
+  let command: [String!]!
+
+  """
+  The task with this name.
+  """
+  pub task(name: String!): Task! @get {
+    Task(name: name, runner: runner, command: command)
+  }
+}
+
+"""
+One mise task.
+"""
+type Task {
+  """
+  Task name.
+  """
+  pub name: String!
+
+  let runner: Container!
+  let command: [String!]!
+
+  """
+  Run the task with `mise run`; it passes when the task exits 0.
+  """
+  pub run: Void @check {
+    runner.withExec(command + [name]).sync
+    null
+  }
+}

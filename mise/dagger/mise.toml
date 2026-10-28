@@ -1,0 +1,8 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# devkit · dagger — the Dagger CLI, pinned like any other tool. Dagger itself
+# brings no tooling: the module in dagger/mise runs `mise run <task>` inside
+# containers, so tool versions still come from mise.toml.
+
+[tools]
+# Keep in step with engineVersion in dagger/mise/dagger-module.toml.
+dagger = "1.0.0-beta.21"

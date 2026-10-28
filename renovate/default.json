@@ -11,7 +11,7 @@
       "customType": "regex",
       "description": "Inline hints: `# renovate: datasource=<ds> depName=<name>` on the line before a version",
       "managerFilePatterns": [
-        "/\\.(ya?ml|toml)$/"
+        "/\\.(ya?ml|toml|dang)$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( versioning=(?<versioning>[^\\s]+))?\\s+[^\\n]*?[:=]\\s*[\"']?(?:[^\"'\\s]*:)?(?<currentValue>[^\"'\\s]+)[\"']?\\s"

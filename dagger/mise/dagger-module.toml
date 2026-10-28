@@ -1,0 +1,7 @@
+name = "mise"
+# Keep in step with the dagger CLI pinned in mise/dagger/mise.toml.
+# renovate: datasource=github-releases depName=dagger/dagger
+engineVersion = "v1.0.0-beta.21"
+
+[runtime]
+  source = "dang"

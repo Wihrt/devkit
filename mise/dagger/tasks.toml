@@ -1,0 +1,17 @@
+#:schema https://mise.jdx.dev/schema/mise-task.json
+# devkit · dagger tasks. They run on the host and drive Dagger, which runs the
+# project's lint:* / test:* mise tasks in containers (see dagger/mise).
+#
+#   DAGGER_ENV   workspace environment from dagger.toml ([env.<name>]), e.g. ci
+
+["dagger:check"]
+description = "Run every Dagger check: one container per mise lint:*/test:* task, in parallel"
+run = 'dagger ${DAGGER_ENV:+--env "$DAGGER_ENV"} check'
+
+["dagger:list"]
+description = "List the Dagger checks, one row per mise task"
+run = 'dagger ${DAGGER_ENV:+--env "$DAGGER_ENV"} check -l --all'
+
+["dagger:fmt"]
+description = "Run the fmt:* mise tasks in a container and review the resulting changeset"
+run = 'dagger ${DAGGER_ENV:+--env "$DAGGER_ENV"} generate'

@@ -1,13 +1,13 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 # devkit eats its own cooking: the base brick, included from the working tree
 # instead of a git:: tag, plus what the template tests need.
-include = ["mise/base/mise.toml", "mise/python/mise.toml"]
+include = ["mise/base/mise.toml", "mise/python/mise.toml", "mise/dagger/mise.toml"]
 
 [tools]
 copier = "9.19.1"
 
 [task_config]
-includes = ["mise/base/tasks.toml", "mise-tasks"]
+includes = ["mise/base/tasks.toml", "mise/dagger/tasks.toml", "mise-tasks"]
 
 [tasks.lint]
 description = "Every lint:* task"

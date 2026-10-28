@@ -5,12 +5,12 @@
   "packageRules": [
     {
       "description": "A tool bump in a brick, an image or an action is a fix for devkit consumers: release-please cuts a patch",
-      "matchFileNames": ["mise/**", "templates/**", ".github/workflows/{base,python,go,helm}.yml", "action.yml"],
+      "matchFileNames": ["mise/**", "dagger/**", "templates/**", ".github/workflows/{base,python,go,helm}.yml", "action.yml"],
       "semanticCommitType": "fix"
     },
     {
       "description": "devkit's own CI, tooling and template-only deps",
-      "matchFileNames": [".github/workflows/{ci,release,mirror-gitlab}.yml", "mise.toml", ".pre-commit-config.yaml", "template/**"],
+      "matchFileNames": [".github/workflows/{ci,dagger,release,mirror-gitlab}.yml", "mise.toml", "dagger.toml", ".pre-commit-config.yaml", "template/**"],
       "semanticCommitType": "chore"
     }
   ]
