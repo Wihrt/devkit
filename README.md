@@ -24,7 +24,8 @@ The rule that holds it together: **a CI job never contains logic, it runs
 versions, and switching between GitLab and GitHub changes nothing but the
 orchestration.
 
-Bricks available today: `base` (always), `python`, `go`, `helm`.
+Bricks available today: `base` (always), `python`, `go`, `helm`, and the
+experimental `dagger` brick ([Dagger 1.0 with mise](docs/dagger.md)).
 
 ## Start a project
 
@@ -64,6 +65,7 @@ running `prek install` (or run `mise run setup:hooks`).
 | python | `install:python`, `lint:python`, `fmt:python`, `test:python`, `build:python` | uv, ruff (uv brings Python) |
 | go | `lint:go`, `fmt:go`, `test:go`, `build:go` | go, golangci-lint |
 | helm | `deps:helm`, `lint:helm`, `test:helm` (helm template → kubeconform), `docs:helm`, `build:helm`, `publish:helm` | helm, kubeconform, helm-docs |
+| dagger (experimental) | `dagger:check`, `dagger:list`, `dagger:fmt` — run the other bricks' `lint:*`/`test:*` tasks in Dagger containers | dagger |
 
 Differences between local and CI are explicit variables set by the CI
 wrappers, never a test on `$CI` inside a task: `UV_LOCKED=1` (stale `uv.lock`
@@ -233,6 +235,9 @@ mise run test:template python,go,helm   # render + lint/test/build the result
 `test:template` includes the bricks by `git::` URL, so it tests a pushed
 commit (`DEVKIT_REF`, default `HEAD`; `DEVKIT_REPO` to point elsewhere). CI
 runs it for every stack.
+
+[docs/dagger.md](docs/dagger.md) shows Dagger 1.0 as the executor of the
+mise tasks, mise keeping the tooling.
 
 Further notes: [docs/mise-includes.md](docs/mise-includes.md) records how mise
 includes actually behave, checked against mise 2026.10.

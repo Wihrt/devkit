@@ -1,0 +1,18 @@
+# devkit runs its own mise tasks through Dagger:
+#   mise run dagger:check      (or simply: dagger check)
+#
+# The module comes from this working tree. A project installs it by tag:
+#   dagger module install github.com/Wihrt/devkit/dagger/mise@X.Y.Z
+
+[modules.mise]
+source = "dagger/mise"
+
+[modules.mise.settings]
+# test:template renders the Copier template against a commit pushed to
+# GitHub and runs mise in the result: it stays in the ci workflow matrix.
+checkPrefixes = ["lint:"]
+
+# `dagger --env ci …` (DAGGER_ENV=ci for the dagger:* tasks): the runner's
+# token keeps mise clear of GitHub API rate limits while installing tools.
+[env.ci.modules.mise.settings]
+githubToken = "env://GITHUB_TOKEN"

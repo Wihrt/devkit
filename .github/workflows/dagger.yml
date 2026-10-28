@@ -1,0 +1,35 @@
+# Experiment: the same lint tasks as ci.yml, run by Dagger 1.0 (beta).
+# GitHub only provides a runner with Docker; mise brings the dagger CLI, and
+# the dagger/mise module runs each `mise run lint:*` in its own container.
+name: dagger
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DAGGER_ENV: ci
+      # Read by the `ci` environment of dagger.toml, and by mise on the host.
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # lint:secrets scans the whole history (Workspace.git mounts it).
+          fetch-depth: 0
+      - uses: jdx/mise-action@v5
+        with:
+          # renovate: datasource=github-releases depName=jdx/mise
+          version: 2026.10.9
+      - run: mise run dagger:list
+      - run: mise run dagger:check
