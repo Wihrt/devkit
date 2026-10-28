@@ -37,7 +37,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.19
           working_directory: ${{ inputs.working-directory }}
       - run: mise run lint:go
 
@@ -56,7 +56,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.19
           working_directory: ${{ inputs.working-directory }}
       - run: mise run test:go
 
@@ -75,7 +75,7 @@ jobs:
       - uses: jdx/mise-action@v5
         with:
           # renovate: datasource=github-releases depName=jdx/mise
-          version: 2026.10.9
+          version: 2026.10.19
           working_directory: ${{ inputs.working-directory }}
       - run: mise run build:go
       - uses: actions/upload-artifact@v7
